@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>3d File quote</title>
+    <link rel="stylesheet" href="style.css"/>
+
+</head>
+<body>
+<div id="circle-container"></div>
+
+<div class="top-gap"></div>
+<main>
+    <div class="main-container-outside">
+
+        <div class="main-container">
+
+
+            <div class="upload" id="upload-container">
+                <div class="loader-outside" id="loader-outside">
+                    <div id="loader" class="loader"></div>
+                </div>
+                <div class="price-outside" id="price-outside"><p id="price" class="price"></p></div>
+
+                <label for="stl-upload" class="upload-btn" id="upload-label">Valitse STL<br> tiedosto</label>
+                <input accept=".stl" type="file" id="stl-upload" name="stl-upload"/>
+            </div>
+            <div class="info">
+                <div id="box1" class="box1">
+                    <div>
+                        <!--                    <p>M&#228;&#228;r&#228;</p>-->
+                        <select class="material" id="material">
+                            <option value="default" selected>Valitse Materiaali</option>
+                            <option value="pla">PLA</option>
+                            <option value="petg">PETG</option>
+                            <option value="abs">ABS</option>
+                        </select>
+                    </div>
+                    <div>
+                        <!--                    <p>V&#228;ri</p>-->
+                        <select class="color" id="color">
+                            <option value="default" selected>Valitse V&#228;ri</option>
+                            <option value="black">Musta</option>
+                            <option value="white">Valkoinen</option>
+                            <option value="red">Punainen</option>
+
+                        </select></div>
+                </div>
+                <div id="box2" class="box2">
+
+                    <div class="count">
+                        <input class="box" type="number" value="1" min="1" id="count"/>
+                        <p>kpl</p>
+                    </div>
+                </div>
+                <div id="box3" class="box3">
+                    <a target="_self" class="pay" id="pay">Siirry maksamaan</a>
+                </div>
+                <div id="box4" class="box4">
+                    <button class="sendData" onclick="sendData()">Hae Hinta</button>
+                </div>
+
+                <div class="misc">
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</main>
+
+<script>
+    const uploadInput = document.getElementById("stl-upload");
+    const material = document.getElementById("material");
+    const color = document.getElementById("color");
+    const count = document.getElementById("count");
+
+    var bucket;
+
+    let currentUploadController = null
+
+
+
+    uploadInput.onchange = () => {
+        // if(uploadInput.files[0].type != "model/stl"){
+        //     alert("Käytä vain STL tiedostoja")
+        //     window.location.reload()
+        //     return;
+        // }
+        if(uploadInput.files[0].size > 150 * 1024 * 1024){
+            alert("Tiedoston pitää olla alle 150mb")
+            window.location.reload()
+            return;
+        }
+        document.getElementById("upload-label").style.display = "none";
+
+    }
+    function sendData(){
+        if (uploadInput.files.length === 0) {
+            alert("Valitse STL Tiedosto");
+            return;
+        }
+        if (material.value === "default") {
+            alert("Valitse Materiaali");
+            return;
+        }
+        if (color.value === "default") {
+            alert("Valitse Väri");
+            return;
+        }if (count.value < 1) {
+            alert("Valitse KPL määrä");
+            return;
+        }
+
+        document.getElementById("box4").style.display = "none";
+        document.getElementById("box1").style.display = "none";
+        document.getElementById("box2").style.display = "none";
+        currentUploadController = new AbortController();
+        document.getElementById("loader-outside").style.display = "flex";
+
+
+
+        fetch("https://tx5xriohj3em3modyq4pmxep3a0sduta.lambda-url.eu-north-1.on.aws/", {
+            method: "POST",
+        }).then(res =>
+            res.json()
+        ).then(data => {
+            bucket = data.bucket;
+            sendFile(uploadInput.files[0], bucket, data.key)
+        })
+
+    };
+
+    function sendFile(file, bucket, key) {
+        fetch(bucket, {
+            method: 'PUT',
+            body: file,
+        }).then(res => {
+                getPrice(key);
+            }
+        )
+    }
+
+
+    function getPrice(key) {
+        fetch("https://uq5heaod3mhmmtogo2x7ueztny0ymfcl.lambda-url.eu-north-1.on.aws/", {
+            method: 'POST',
+            body: JSON.stringify({
+                "key": key,
+                "material" : material.value,
+                "color": color.value,
+                "count" : count.value
+            })
+        }).then(res =>
+            res.json()
+        ).then(data => {
+            document.getElementById("loader-outside").style.display = "none";
+            document.getElementById("box3").style.display = "flex";
+            document.getElementById("price-outside").style.display = "flex";
+            document.getElementById("price").innerText = data.Price + "€";
+            document.getElementById("pay").href = data.StripeURL
+
+
+        })
+    }
+
+
+</script>
+</body>
+</html>
